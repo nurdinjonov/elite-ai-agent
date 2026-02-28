@@ -144,13 +144,15 @@ def run_jarvis(args: argparse.Namespace) -> None:
     """To'liq JARVIS-X agentini ishga tushirish."""
     try:
         from rich.console import Console
-        from rich.panel import Panel
         from rich.markdown import Markdown
     except ImportError:
         print("Rich kutubxonasi topilmadi. O'rnating: pip install rich")
         sys.exit(1)
 
+    from core.ui_renderer import UIRenderer
+
     console = Console()
+    ui = UIRenderer()
 
     # Jarvis ni ishga tushirish
     try:
@@ -189,24 +191,11 @@ def run_jarvis(args: argparse.Namespace) -> None:
             pass
 
     # Startup ekrani
-    _clear_screen()
-    console.print(f"[bold cyan]{_BANNER}[/bold cyan]")
-
     status = jarvis.get_status()
-    ai_status = "[green]✅ Tayyor[/green]" if status["ai_available"] else "[yellow]⚠️ API kalit yo'q[/yellow]"
-    providers = ", ".join(status["providers"]) if status["providers"] else "yo'q"
-    tools_str = ", ".join(status["tools"]) or "yo'q"
-
-    console.print(
-        Panel(
-            f"[bold]Rejim:[/bold] {status['mode'].upper()}\n"
-            f"[bold]AI:[/bold] {ai_status}\n"
-            f"[bold]Provayderlar:[/bold] {providers}\n"
-            f"[bold]Xotira:[/bold] {status['memory']['storage_backend']}\n"
-            f"[bold]Vositalar:[/bold] {tools_str}",
-            title="🤖 JARVIS-X Holati",
-            border_style="cyan",
-        )
+    ui.startup(
+        mode=status["mode"],
+        ai_status=status["ai_available"],
+        providers=status["providers"],
     )
     console.print(_COMMANDS_HELP)
 
@@ -215,19 +204,13 @@ def run_jarvis(args: argparse.Namespace) -> None:
 
     # Asosiy tsikl
     while True:
-        _clear_screen()
         current_status = jarvis.get_status()
-        _render_header(console, current_status["mode"], current_status["ai_available"])
-
-        # Oxirgi savol-javobni ko'rsatish
-        if last_query and last_response:
-            console.print(f"\n[bold cyan]🧑 Siz:[/bold cyan] {last_query}\n")
-            console.print("[bold green]🤖 JARVIS:[/bold green]")
-            try:
-                console.print(Markdown(last_response))
-            except Exception:
-                console.print(last_response)
-            console.print()
+        ui.full_redraw(
+            mode=current_status["mode"],
+            ai_status=current_status["ai_available"],
+            query=last_query or "",
+            response=last_response or "",
+        )
 
         try:
             if voice_engine and getattr(voice_engine, "stt_available", False):
