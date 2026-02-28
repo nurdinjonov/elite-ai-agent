@@ -5,8 +5,6 @@ Real vaqtda dars monitoring, homework tracking, kundalik rejalashtirish.
 
 import json
 import sys
-import time
-from datetime import datetime
 
 try:
     from rich.console import Console

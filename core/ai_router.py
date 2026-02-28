@@ -11,13 +11,6 @@ from pathlib import Path
 from typing import Any, Optional
 
 try:
-    import httpx  # type: ignore
-
-    _HTTPX_AVAILABLE = True
-except ImportError:
-    _HTTPX_AVAILABLE = False
-
-try:
     from openai import OpenAI  # type: ignore
 
     _OPENAI_AVAILABLE = True
