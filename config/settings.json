@@ -1,0 +1,24 @@
+{
+  "agent": {
+    "name": "JARVIS-X",
+    "version": "1.0.0",
+    "default_mode": "pro",
+    "default_language": "auto",
+    "max_conversation_history": 50
+  },
+  "memory": {
+    "short_term_limit": 50,
+    "long_term_collection": "jarvis_memory",
+    "chunk_size": 500,
+    "chunk_overlap": 50
+  },
+  "voice": {
+    "enabled": false,
+    "stt_model": "whisper-base",
+    "tts_engine": "piper"
+  },
+  "security": {
+    "allowed_commands": ["ls", "dir", "cat", "echo", "python", "pip", "git"],
+    "blocked_paths": ["/etc", "/sys", "/boot", "C:\\Windows\\System32"]
+  }
+}
