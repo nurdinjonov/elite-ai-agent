@@ -4,7 +4,10 @@ Real vaqtda dars monitoring, homework tracking, kundalik rejalashtirish.
 """
 
 import json
+import os
 import sys
+from datetime import datetime, timezone, timedelta
+from pathlib import Path
 
 try:
     from rich.console import Console
@@ -20,7 +23,10 @@ from core.intelligence import CognitiveLoadBalancer, TimePerceptionEngine, LifeN
 
 console = Console()
 
-_BANNER = """
+# Toshkent vaqt zonasi (UTC+5)
+_TASHKENT_TZ = timezone(timedelta(hours=5))
+
+_BANNER = r"""
      _   _   ____    _____  __     __ ___   ____         _      _   _____  _____
     | | / \ |  _ \  |_   _| \ \   / /|_ _| / ___|       | |    | | |  ___|| ____|
  _  | |/ _ \| |_) |   | |    \ \ / /  | |  \___ \       | |    | | | |_   |  _|
@@ -29,6 +35,38 @@ _BANNER = """
 
                     Smart Life Assistant — Hayot yordamchisi
 """
+
+
+def _clear_screen() -> None:
+    """Terminalni tozalash (cross-platform)."""
+    os.system("cls" if os.name == "nt" else "clear")
+
+
+def _tashkent_now() -> str:
+    """Hozirgi Toshkent vaqtini ``YYYY-MM-DD HH:MM:SS`` formatida qaytarish."""
+    return datetime.now(_TASHKENT_TZ).strftime("%Y-%m-%d %H:%M:%S")
+
+
+def _render_header() -> None:
+    """Persistent header-ni render qilish."""
+    sep = "═" * 42
+    console.print(f"[bold cyan]{sep}[/bold cyan]")
+    console.print(f"[bold cyan]{'JARVIS • LIFE ASSISTANT':^42}[/bold cyan]")
+    console.print(f"[bold cyan]{sep}[/bold cyan]")
+    console.print(f"  [dim]📍 Toshkent: {_tashkent_now()}[/dim]")
+    console.print(f"[bold cyan]{sep}[/bold cyan]")
+
+
+def _log_interaction(user_input: str, response: str) -> None:
+    """Suhbatni data/chat_history.log faylga saqlash."""
+    log_file = Path(__file__).parent / "data" / "chat_history.log"
+    log_file.parent.mkdir(parents=True, exist_ok=True)
+    timestamp = datetime.now(_TASHKENT_TZ).strftime("%Y-%m-%d %H:%M:%S")
+    with log_file.open("a", encoding="utf-8") as f:
+        f.write(f"[{timestamp}] [MODE: life]\n")
+        f.write(f"🧑 Siz: {user_input}\n")
+        f.write(f"🤖 JARVIS: {response}\n")
+        f.write("-" * 40 + "\n")
 
 
 def print_banner() -> None:
@@ -206,9 +244,71 @@ def load_sample_schedule(scheduler: SmartScheduler) -> None:
         console.print(f"[red]Xato: {exc}[/red]")
 
 
-def main() -> None:
+# Intent → slash buyruq mapping
+_INTENT_CMD_MAP: dict[str, str] = {
+    "show_help": "/help",
+    "show_schedule": "/schedule",
+    "show_week": "/week",
+    "add_class": "/add_class",
+    "show_homework": "/homework",
+    "add_homework": "/add_hw",
+    "done_homework": "/done_hw",
+    "show_tasks": "/tasks",
+    "add_task": "/add_task",
+    "done_task": "/done_task",
+    "show_plan": "/plan",
+    "show_today": "/today",
+    "show_stats": "/stats",
+    "show_reminders": "/reminders",
+    "start_focus": "/focus",
+    "stop_focus": "/focus stop",
+    "show_cognitive": "/cognitive",
+    "show_reflect": "/reflect",
+    "exit": "/exit",
+}
+
+
+def _intent_to_cmd(intent_info: dict, raw_input: str) -> str:
+    """Intent ma'lumotlarini slash buyruqqa aylantirish.
+
+    Agar intent ``chat`` yoki noma'lum bo'lsa raw_input qaytariladi.
+    """
+    intent = intent_info.get("intent", "chat")
+    if intent == "chat" or intent not in _INTENT_CMD_MAP:
+        return raw_input
+
+    base_cmd = _INTENT_CMD_MAP[intent]
+
+    # stop_focus maxsus holatini to'g'ri qaytarish
+    if intent == "stop_focus":
+        return base_cmd
+
+    params = intent_info.get("params", {})
+
+    # Parametrlarni qo'shish
+    extras: list[str] = []
+    if params.get("mode"):
+        extras.append(params["mode"])
+    if params.get("minutes"):
+        extras.append(str(params["minutes"]))
+    if params.get("day") and intent in ("show_schedule",):
+        extras.append(params["day"])
+    if params.get("title"):
+        extras.append(params["title"])
+
+    if extras:
+        return f"{base_cmd} {' '.join(extras)}"
+    return base_cmd
+
+
+
     """Asosiy tsikl."""
-    print_banner()
+    # Intent parser
+    try:
+        from core.intent_parser import IntentParser
+        intent_parser = IntentParser()
+    except Exception:
+        intent_parser = None  # type: ignore[assignment]
 
     scheduler = SmartScheduler()
     homework_mgr = HomeworkManager()
@@ -217,6 +317,10 @@ def main() -> None:
     cognitive = CognitiveLoadBalancer()
     time_engine = TimePerceptionEngine()
     narrative = LifeNarrativeEngine()
+
+    # Startup ekrani
+    _clear_screen()
+    print_banner()
 
     # Ertalabki xulosa
     console.print(Panel(planner.get_morning_briefing(), title="🌅 Ertalabki Xulosa"))
@@ -228,9 +332,20 @@ def main() -> None:
             Panel(reminder_engine.format_notifications(reminders), title="🔔 Eslatmalar")
         )
 
-    console.print("\n[dim]Yordam uchun /help yozing.[/dim]\n")
+    console.print("\n[dim]Tabiiy tilda yozing yoki /help buyrug'ini ishlating.[/dim]\n")
+
+    last_output: str | None = None
+    last_query: str | None = None
 
     while True:
+        _clear_screen()
+        _render_header()
+
+        # Oxirgi chiqishni ko'rsatish
+        if last_query and last_output:
+            console.print(f"\n[bold cyan]🧑 Siz:[/bold cyan] {last_query}")
+            console.print(f"[bold green]🤖 JARVIS:[/bold green] {last_output}\n")
+
         try:
             user_input = console.input("[bold cyan]🧑 Siz:[/bold cyan] ").strip()
         except (KeyboardInterrupt, EOFError):
@@ -240,58 +355,76 @@ def main() -> None:
         if not user_input:
             continue
 
-        parts = user_input.split()
-        cmd = parts[0].lower()
+        # Intent tahlili (tabiiy til + slash)
+        intent_info: dict = {}
+        if intent_parser is not None:
+            try:
+                intent_info = intent_parser.parse(user_input)
+            except Exception:
+                intent_info = {}
 
-        if cmd == "/exit":
+        mapped_cmd = _intent_to_cmd(intent_info, user_input)
+        parts = mapped_cmd.split()
+        cmd = parts[0].lower() if parts else user_input.split()[0].lower()
+
+        output: str = ""
+
+        if cmd in ("/exit", "/quit"):
             console.print("[yellow]Xayr! Yaxshi kun tilaymiz! 👋[/yellow]")
             break
 
         elif cmd == "/help":
             show_help()
+            output = "Yordam ko'rsatildi."
 
         elif cmd == "/schedule":
             day_arg = parts[1] if len(parts) > 1 else None
             show_schedule(scheduler, day_arg)
+            output = "Jadval ko'rsatildi."
 
         elif cmd == "/week":
             show_weekly_schedule(scheduler)
+            output = "Haftalik jadval ko'rsatildi."
 
         elif cmd == "/add_class":
-            # /add_class <fan> <kun> <boshlanish> <tugash> [xona] [oqituvchi]
             if len(parts) < 5:
                 console.print("[red]Foydalanish: /add_class <fan> <kun> <boshlanish> <tugash> [xona][/red]")
+                output = "Noto'g'ri format."
             else:
                 name, day, start, end_ = parts[1], parts[2], parts[3], parts[4]
                 location = parts[5] if len(parts) > 5 else ""
                 teacher = parts[6] if len(parts) > 6 else ""
                 try:
                     cls = scheduler.add_class(name, day, start, end_, location, teacher)
-                    console.print(f"[green]✅ Dars qo'shildi: {cls.name} ({cls.id[:8]})[/green]")
+                    output = f"✅ Dars qo'shildi: {cls.name} ({cls.id[:8]})"
+                    console.print(f"[green]{output}[/green]")
                 except Exception as e:
-                    console.print(f"[red]Xato: {e}[/red]")
+                    output = f"Xato: {e}"
+                    console.print(f"[red]{output}[/red]")
 
         elif cmd == "/remove_class":
             if len(parts) < 2:
                 console.print("[red]Foydalanish: /remove_class <id>[/red]")
+                output = "Noto'g'ri format."
             else:
                 found = scheduler.find_class_by_prefix(parts[1])
                 if found:
                     result = scheduler.remove_class(found.id)
-                    if result:
-                        console.print(f"[green]✅ Dars o'chirildi.[/green]")
-                    else:
-                        console.print("[red]Dars topilmadi.[/red]")
+                    output = "✅ Dars o'chirildi." if result else "Dars topilmadi."
+                    color = "green" if result else "red"
+                    console.print(f"[{color}]{output}[/{color}]")
                 else:
-                    console.print("[red]Dars topilmadi.[/red]")
+                    output = "Dars topilmadi."
+                    console.print(f"[red]{output}[/red]")
 
         elif cmd == "/homework":
             show_homework(homework_mgr)
+            output = "Uy vazifalari ko'rsatildi."
 
         elif cmd == "/add_hw":
-            # /add_hw <fan> <tavsif> [muddat] [ustuvorlik]
             if len(parts) < 3:
                 console.print("[red]Foydalanish: /add_hw <fan> <tavsif> [muddat] [ustuvorlik][/red]")
+                output = "Noto'g'ri format."
             else:
                 subject = parts[1]
                 description = parts[2]
@@ -299,28 +432,35 @@ def main() -> None:
                 priority = parts[4] if len(parts) > 4 else "medium"
                 try:
                     hw = homework_mgr.add_homework(subject, description, deadline, priority)
-                    console.print(f"[green]✅ Uy vazifasi qo'shildi: {hw.subject} ({hw.id[:8]})[/green]")
+                    output = f"✅ Uy vazifasi qo'shildi: {hw.subject} ({hw.id[:8]})"
+                    console.print(f"[green]{output}[/green]")
                 except Exception as e:
-                    console.print(f"[red]Xato: {e}[/red]")
+                    output = f"Xato: {e}"
+                    console.print(f"[red]{output}[/red]")
 
         elif cmd == "/done_hw":
             if len(parts) < 2:
                 console.print("[red]Foydalanish: /done_hw <id>[/red]")
+                output = "Noto'g'ri format."
             else:
                 found = homework_mgr.find_homework_by_prefix(parts[1])
                 if found:
                     result = homework_mgr.complete_homework(found.id)
-                    console.print("[green]✅ Bajarilgan deb belgilandi![/green]" if result else "[red]Topilmadi.[/red]")
+                    output = "✅ Bajarilgan deb belgilandi!" if result else "Topilmadi."
+                    color = "green" if result else "red"
+                    console.print(f"[{color}]{output}[/{color}]")
                 else:
-                    console.print("[red]Vazifa topilmadi.[/red]")
+                    output = "Vazifa topilmadi."
+                    console.print(f"[red]{output}[/red]")
 
         elif cmd == "/tasks":
             show_tasks(homework_mgr)
+            output = "Vazifalar ko'rsatildi."
 
         elif cmd == "/add_task":
-            # /add_task <sarlavha> [tavsif] [muddat] [ustuvorlik] [kategoriya]
             if len(parts) < 2:
                 console.print("[red]Foydalanish: /add_task <sarlavha> [tavsif] [muddat][/red]")
+                output = "Noto'g'ri format."
             else:
                 title = parts[1]
                 description = parts[2] if len(parts) > 2 else ""
@@ -329,20 +469,26 @@ def main() -> None:
                 category = parts[5] if len(parts) > 5 else "general"
                 try:
                     task = homework_mgr.add_task(title, description, deadline, priority, category)
-                    console.print(f"[green]✅ Vazifa qo'shildi: {task.title} ({task.id[:8]})[/green]")
+                    output = f"✅ Vazifa qo'shildi: {task.title} ({task.id[:8]})"
+                    console.print(f"[green]{output}[/green]")
                 except Exception as e:
-                    console.print(f"[red]Xato: {e}[/red]")
+                    output = f"Xato: {e}"
+                    console.print(f"[red]{output}[/red]")
 
         elif cmd == "/done_task":
             if len(parts) < 2:
                 console.print("[red]Foydalanish: /done_task <id>[/red]")
+                output = "Noto'g'ri format."
             else:
                 found = homework_mgr.find_task_by_prefix(parts[1])
                 if found:
                     result = homework_mgr.complete_task(found.id)
-                    console.print("[green]✅ Bajarilgan deb belgilandi![/green]" if result else "[red]Topilmadi.[/red]")
+                    output = "✅ Bajarilgan deb belgilandi!" if result else "Topilmadi."
+                    color = "green" if result else "red"
+                    console.print(f"[{color}]{output}[/{color}]")
                 else:
-                    console.print("[red]Vazifa topilmadi.[/red]")
+                    output = "Vazifa topilmadi."
+                    console.print(f"[red]{output}[/red]")
 
         elif cmd == "/plan":
             plan = planner.generate_daily_plan()
@@ -360,25 +506,29 @@ def main() -> None:
                 for t in plan.tasks:
                     lines.append(f"  - {t.get('subject', t.get('title', ''))}")
             console.print(Panel("\n".join(lines), title="📋 Bugungi Reja"))
+            output = "Reja ko'rsatildi."
 
         elif cmd == "/reminders":
             reminders = reminder_engine.check_all()
             text = reminder_engine.format_notifications(reminders)
             console.print(Panel(text, title="🔔 Eslatmalar"))
+            output = "Eslatmalar ko'rsatildi."
 
         elif cmd == "/stats":
             show_stats(homework_mgr)
+            output = "Statistika ko'rsatildi."
 
         elif cmd == "/summary":
             summary = planner.get_end_of_day_summary()
             console.print(Panel(summary, title="📊 Kun Oxiri Xulosasi"))
+            output = "Xulosa ko'rsatildi."
 
         elif cmd == "/load_sample":
             load_sample_schedule(scheduler)
+            output = "Namuna jadval yuklandi."
 
         elif cmd == "/today":
-            from datetime import datetime as _dt
-            lines = [f"📅 Bugungi Ko'rinish — {_dt.now().strftime('%Y-%m-%d %A')}", ""]
+            lines = [f"📅 Bugungi Ko'rinish — {datetime.now(_TASHKENT_TZ).strftime('%Y-%m-%d %A')}", ""]
             classes = scheduler.get_schedule()
             if classes:
                 lines.append(f"🏫 Darslar ({len(classes)} ta):")
@@ -401,27 +551,45 @@ def main() -> None:
             lines.append(f"{icon} Kognitiv yuk: {cog['level'].upper()}")
             lines.append(f"💡 {cog['suggestion']}")
             console.print(Panel("\n".join(lines), title="🌅 Bugungi To'liq Sharh"))
+            output = "Bugungi sharh ko'rsatildi."
 
         elif cmd == "/focus":
             if len(parts) > 1 and parts[1].lower() == "stop":
-                console.print(Panel(time_engine.stop_focus(), title="⏹ Focus To'xtatildi"))
+                msg = time_engine.stop_focus()
+                console.print(Panel(msg, title="⏹ Focus To'xtatildi"))
+                output = msg
             else:
                 try:
                     minutes = int(parts[1]) if len(parts) > 1 else 25
                 except (ValueError, IndexError):
                     minutes = 25
-                console.print(Panel(time_engine.start_focus(minutes), title="🍅 Focus Boshlandi"))
+                msg = time_engine.start_focus(minutes)
+                console.print(Panel(msg, title="🍅 Focus Boshlandi"))
+                output = msg
 
         elif cmd == "/cognitive":
-            console.print(Panel(cognitive.format_report(homework_mgr), title="🧠 Kognitiv Yuk"))
+            report = cognitive.format_report(homework_mgr)
+            console.print(Panel(report, title="🧠 Kognitiv Yuk"))
+            output = report
 
         elif cmd == "/reflect":
-            console.print(Panel(narrative.get_weekly_reflection(homework_mgr), title="📖 Haftalik Aks Ettirish"))
+            reflection = narrative.get_weekly_reflection(homework_mgr)
+            console.print(Panel(reflection, title="📖 Haftalik Aks Ettirish"))
+            output = reflection
 
         else:
-            console.print(
-                f"[yellow]Noma'lum buyruq: {cmd}. Yordam uchun /help yozing.[/yellow]"
-            )
+            msg = f"Noma'lum buyruq: {cmd}. Yordam uchun 'yordam' yoki /help yozing."
+            console.print(f"[yellow]{msg}[/yellow]")
+            output = msg
+
+        # Terminal beep
+        print("\a", end="", flush=True)
+
+        # Chat history log
+        _log_interaction(user_input, output)
+
+        last_query = user_input
+        last_output = output
 
 
 if __name__ == "__main__":
