@@ -1,0 +1,33 @@
+{
+  "providers": {
+    "openrouter": {
+      "base_url": "https://openrouter.ai/api/v1",
+      "models": {
+        "fast": "meta-llama/llama-3.1-8b-instruct:free",
+        "code": "deepseek/deepseek-coder-v2",
+        "pro": "anthropic/claude-3.5-sonnet"
+      }
+    },
+    "groq": {
+      "base_url": "https://api.groq.com/openai/v1",
+      "models": {
+        "fast": "llama-3.1-8b-instant",
+        "code": "llama-3.3-70b-versatile",
+        "pro": "llama-3.3-70b-versatile"
+      }
+    },
+    "openai": {
+      "base_url": "https://api.openai.com/v1",
+      "models": {
+        "fast": "gpt-4o-mini",
+        "code": "gpt-4o",
+        "pro": "gpt-4o"
+      }
+    }
+  },
+  "default_provider_priority": {
+    "fast": ["groq", "openrouter", "openai"],
+    "code": ["openrouter", "groq", "openai"],
+    "pro": ["openai", "openrouter", "groq"]
+  }
+}
