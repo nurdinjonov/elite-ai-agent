@@ -1,22 +1,81 @@
 {
   "providers": {
+    "gemini": {
+      "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
+      "models": {
+        "fast": "gemini-2.0-flash-lite",
+        "code": "gemini-2.5-flash-preview-05-20",
+        "pro": "gemini-2.5-pro-preview-06-05",
+        "all": [
+          "gemini-2.5-pro-preview-06-05",
+          "gemini-2.5-flash-preview-05-20",
+          "gemini-2.0-flash",
+          "gemini-2.0-flash-lite"
+        ]
+      }
+    },
+    "deepseek": {
+      "base_url": "https://api.deepseek.com/v1",
+      "models": {
+        "fast": "deepseek-chat",
+        "code": "deepseek-coder",
+        "pro": "deepseek-reasoner",
+        "all": [
+          "deepseek-chat",
+          "deepseek-coder",
+          "deepseek-reasoner"
+        ]
+      }
+    },
     "openrouter": {
       "base_url": "https://openrouter.ai/api/v1",
       "models": {
         "fast": "meta-llama/llama-3.1-8b-instruct:free",
         "code": "deepseek/deepseek-coder-v2",
-        "pro": "anthropic/claude-3.5-sonnet"
+        "pro": "anthropic/claude-sonnet-4",
+        "all": [
+          "anthropic/claude-sonnet-4",
+          "anthropic/claude-3.5-sonnet",
+          "google/gemini-2.5-pro-preview",
+          "google/gemini-2.5-flash-preview-05-20",
+          "deepseek/deepseek-coder-v2",
+          "deepseek/deepseek-r1",
+          "meta-llama/llama-3.1-8b-instruct:free",
+          "meta-llama/llama-3.3-70b-instruct",
+          "qwen/qwen-2.5-72b-instruct",
+          "mistralai/mistral-large-latest"
+        ]
       }
     },
     "groq": {
       "base_url": "https://api.groq.com/openai/v1",
       "models": {
         "fast": "llama-3.1-8b-instant",
-        "code": "llama-3.1-70b-versatile",
-        "pro": "llama-3.1-70b-versatile"
+        "code": "llama-3.3-70b-versatile",
+        "pro": "llama-3.3-70b-versatile",
+        "all": [
+          "llama-3.3-70b-versatile",
+          "llama-3.1-8b-instant",
+          "mixtral-8x7b-32768",
+          "gemma2-9b-it"
+        ]
+      }
+    },
+    "huggingface": {
+      "base_url": "https://api-inference.huggingface.co/v1/",
+      "models": {
+        "fast": "mistralai/Mistral-7B-Instruct-v0.3",
+        "code": "bigcode/starcoder2-15b",
+        "pro": "meta-llama/Meta-Llama-3-8B-Instruct",
+        "all": [
+          "meta-llama/Meta-Llama-3-8B-Instruct",
+          "mistralai/Mistral-7B-Instruct-v0.3",
+          "bigcode/starcoder2-15b",
+          "microsoft/Phi-3-mini-4k-instruct"
+        ]
       }
     }
   },
-  "default_provider": "openrouter",
-  "fallback_order": ["openrouter", "groq"]
+  "default_provider": "gemini",
+  "fallback_order": ["gemini", "deepseek", "openrouter", "groq", "huggingface"]
 }

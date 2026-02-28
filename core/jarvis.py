@@ -20,6 +20,13 @@ _MODE_COMMANDS = {
     "/pro": "pro",
 }
 
+_PROVIDER_CMD = "/provider"
+_PROVIDERS_CMD = "/providers"
+_MODEL_CMD = "/model"
+_MODELS_CMD = "/models"
+_AUTO_CMD = "/auto"
+_STATUS_CMD = "/status"
+
 _SYSTEM_BASE = (
     "You are JARVIS-X, an autonomous AI agent. "
     "You can help with coding, research, planning, and general questions. "
@@ -109,6 +116,50 @@ class Jarvis:
             self.mode_manager.set_mode(mode_name)
             mode_info = self.mode_manager.get_mode()
             return f"✅ Rejim o'zgartirildi: **{mode_info['name']}**"
+
+        # /provider yoki /providers — provayder holati yoki tanlash
+        if cmd in (_PROVIDER_CMD, _PROVIDERS_CMD):
+            if len(parts) >= 2:
+                provider_name = parts[1].lower()
+                try:
+                    self.router.set_provider(provider_name)
+                    return f"✅ Provayder tanlandi: **{provider_name}**\nAutomatik rejimga qaytish uchun /auto ishlating."
+                except ValueError as exc:
+                    return f"❌ {exc}"
+            else:
+                return self.router.list_providers_status()
+
+        # /model yoki /models — model holati yoki tanlash
+        if cmd in (_MODEL_CMD, _MODELS_CMD):
+            if len(parts) >= 2:
+                model_name = " ".join(parts[1:])
+                self.router.set_model(model_name)
+                return f"✅ Model tanlandi: **{model_name}**\nAutomatik rejimga qaytish uchun /auto ishlating."
+            else:
+                return self.router.list_all_models()
+
+        # /auto — avtomatik rejimga qaytish
+        if cmd == _AUTO_CMD:
+            self.router.reset_auto()
+            return "✅ Avtomatik rejimga qaytildi. Provider va model avtomatik tanlanadi."
+
+        # /status — hozirgi holat
+        if cmd == _STATUS_CMD:
+            status = self.get_status()
+            forced_provider = self.router.get_current_provider()
+            forced_model = self.router.get_current_model()
+            provider_str = forced_provider if forced_provider else "avtomatik (fallback)"
+            model_str = forced_model if forced_model else "avtomatik (rejimga qarab)"
+            available = ", ".join(status["providers"]) if status["providers"] else "yo'q"
+            ai_icon = "✅" if status["ai_available"] else "❌"
+            return (
+                "**Hozirgi holat:**\n"
+                f"  • Rejim: **{status['mode'].upper()}**\n"
+                f"  • Provayder: **{provider_str}**\n"
+                f"  • Model: **{model_str}**\n"
+                f"  • Mavjud provayderlar: {available}\n"
+                f"  • AI tayyor: {ai_icon}"
+            )
 
         # Tilni aniqlash
         detected_lang = self.language.detect(user_input)
