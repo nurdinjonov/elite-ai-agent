@@ -1,47 +1,116 @@
-import os
+"""
+Fayl boshqaruvi vositasi — xavfsiz fayl operatsiyalari.
+"""
+
+from __future__ import annotations
+
 from pathlib import Path
 
-from langchain_core.tools import tool
+
+# Himoyalangan yo'llar — o'zgartirishga ruxsat yo'q
+_BLOCKED_PATHS = [
+    "/etc",
+    "/sys",
+    "/boot",
+    "/usr/bin",
+    "/usr/sbin",
+    "C:\\Windows\\System32",
+    "C:\\Windows\\SysWOW64",
+]
+_MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
 
 
-@tool
-def read_file_tool(file_path: str) -> str:
-    """Faylni o'qish. Fayllarni ko'rish, tahlil qilish uchun ishlatiladi."""
-    try:
-        path = Path(file_path)
-        if not path.exists():
-            return f"Fayl topilmadi: {file_path}"
-        if path.stat().st_size > 1_000_000:
-            return "Xato: Fayl hajmi 1MB dan katta."
-        return path.read_text(encoding="utf-8")
-    except Exception as e:
-        return f"Fayl o'qish xatosi: {e}"
+def _is_safe_path(path_str: str) -> bool:
+    """Yo'lning xavfsizligini tekshirish."""
+    path = Path(path_str).resolve()
+    path_str_resolved = str(path)
+    return not any(path_str_resolved.startswith(bp) for bp in _BLOCKED_PATHS)
 
 
-@tool
-def write_file_tool(file_path: str, content: str) -> str:
-    """Faylga yozish. Yangi fayl yaratish yoki mavjudini yangilash uchun."""
-    try:
-        path = Path(file_path)
-        path.parent.mkdir(parents=True, exist_ok=True)
-        path.write_text(content, encoding="utf-8")
-        return f"Muvaffaqiyatli yozildi: {file_path}"
-    except Exception as e:
-        return f"Fayl yozish xatosi: {e}"
+class FileManagerTool:
+    """Xavfsiz fayl operatsiyalari."""
 
+    def read_file(self, path: str) -> str:
+        """Faylni o'qish.
 
-@tool
-def list_directory_tool(directory_path: str = ".") -> str:
-    """Katalog tarkibini ko'rsatish."""
-    try:
-        path = Path(directory_path)
-        if not path.exists():
-            return f"Katalog topilmadi: {directory_path}"
-        items = sorted(path.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower()))
-        lines = []
-        for item in items:
-            icon = "\U0001f4c2" if item.is_dir() else "\U0001f4c4"
-            lines.append(f"{icon} {item.name}")
-        return "\n".join(lines) if lines else "Katalog bo'sh."
-    except Exception as e:
-        return f"Katalog ko'rish xatosi: {e}"
+        Args:
+            path: Fayl yo'li
+
+        Returns:
+            Fayl mazmuni yoki xato xabari
+        """
+        if not _is_safe_path(path):
+            return f"Xavfsizlik cheklovi: bu yo'lga ruxsat yo'q: {path}"
+
+        file_path = Path(path)
+        if not file_path.exists():
+            return f"Fayl topilmadi: {path}"
+        if not file_path.is_file():
+            return f"Bu fayl emas: {path}"
+        if file_path.stat().st_size > _MAX_FILE_SIZE:
+            return f"Fayl hajmi juda katta (>{_MAX_FILE_SIZE // (1024*1024)} MB): {path}"
+
+        try:
+            return file_path.read_text(encoding="utf-8", errors="ignore")
+        except OSError as exc:
+            return f"Fayl o'qish xatosi: {exc}"
+
+    def write_file(self, path: str, content: str) -> str:
+        """Faylga yozish.
+
+        Args:
+            path: Fayl yo'li
+            content: Yoziladigan mazmun
+
+        Returns:
+            Muvaffaqiyat yoki xato xabari
+        """
+        if not _is_safe_path(path):
+            return f"Xavfsizlik cheklovi: bu yo'lga ruxsat yo'q: {path}"
+
+        try:
+            file_path = Path(path)
+            file_path.parent.mkdir(parents=True, exist_ok=True)
+            file_path.write_text(content, encoding="utf-8")
+            return f"✅ Muvaffaqiyatli yozildi: {path}"
+        except OSError as exc:
+            return f"Fayl yozish xatosi: {exc}"
+
+    def list_directory(self, path: str = ".") -> str:
+        """Katalog tarkibini ko'rsatish.
+
+        Args:
+            path: Katalog yo'li
+
+        Returns:
+            Katalog tarkibi yoki xato xabari
+        """
+        if not _is_safe_path(path):
+            return f"Xavfsizlik cheklovi: bu yo'lga ruxsat yo'q: {path}"
+
+        dir_path = Path(path)
+        if not dir_path.exists():
+            return f"Katalog topilmadi: {path}"
+        if not dir_path.is_dir():
+            return f"Bu katalog emas: {path}"
+
+        try:
+            items = sorted(dir_path.iterdir(), key=lambda p: (not p.is_dir(), p.name.lower()))
+            if not items:
+                return "Katalog bo'sh."
+            lines = []
+            for item in items:
+                icon = "📂" if item.is_dir() else "📄"
+                size_info = ""
+                if item.is_file():
+                    size = item.stat().st_size
+                    if size < 1024:
+                        size_info = f" ({size} B)"
+                    elif size < 1024 * 1024:
+                        size_info = f" ({size // 1024} KB)"
+                    else:
+                        size_info = f" ({size // (1024 * 1024)} MB)"
+                lines.append(f"{icon} {item.name}{size_info}")
+            return "\n".join(lines)
+        except OSError as exc:
+            return f"Katalog ko'rish xatosi: {exc}"
