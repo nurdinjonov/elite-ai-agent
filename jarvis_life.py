@@ -18,6 +18,7 @@ except ImportError:
     sys.exit(1)
 
 from life import SmartScheduler, HomeworkManager, DailyPlanner, ReminderEngine
+from core.intelligence import CognitiveLoadBalancer, TimePerceptionEngine, LifeNarrativeEngine
 
 console = Console()
 
@@ -170,6 +171,13 @@ def show_help() -> None:
 - `/stats` — statistika
 - `/summary` — kun oxiri xulosasi
 
+### Intellekt Modullari
+- `/today` — bugungi to'liq sharh (dars, vazifalar, kognitiv yuk)
+- `/focus [daqiqa]` — Pomodoro/focus sessiyani boshlash (default 25 min)
+- `/focus stop` — focus sessiyani to'xtatish
+- `/cognitive` — kognitiv yuk tahlili
+- `/reflect` — haftalik aks ettirish va tahlil
+
 ### Boshqa
 - `/load_sample` — namuna jadval yuklash
 - `/help` — yordam
@@ -208,6 +216,9 @@ def main() -> None:
     homework_mgr = HomeworkManager()
     planner = DailyPlanner()
     reminder_engine = ReminderEngine()
+    cognitive = CognitiveLoadBalancer()
+    time_engine = TimePerceptionEngine()
+    narrative = LifeNarrativeEngine()
 
     # Ertalabki xulosa
     console.print(Panel(planner.get_morning_briefing(), title="🌅 Ertalabki Xulosa"))
@@ -366,6 +377,48 @@ def main() -> None:
 
         elif cmd == "/load_sample":
             load_sample_schedule(scheduler)
+
+        elif cmd == "/today":
+            from datetime import datetime as _dt
+            lines = [f"📅 Bugungi Ko'rinish — {_dt.now().strftime('%Y-%m-%d %A')}", ""]
+            classes = scheduler.get_schedule()
+            if classes:
+                lines.append(f"🏫 Darslar ({len(classes)} ta):")
+                for c in classes:
+                    lines.append(f"  {c.start_time}-{c.end_time}: {c.name}")
+            else:
+                lines.append("🏫 Bugun dars yo'q")
+            lines.append("")
+            pending = homework_mgr.get_pending_homework()
+            if pending:
+                lines.append(f"📝 Bajarilmagan uy vazifalari ({len(pending)} ta):")
+                for h in pending[:5]:
+                    lines.append(f"  • {h.subject}: {h.description}")
+            else:
+                lines.append("📝 Uy vazifalari yo'q ✅")
+            lines.append("")
+            cog = cognitive.get_analysis(homework_mgr)
+            level_icons = {"low": "🟢", "moderate": "🟡", "high": "🟠", "critical": "🔴"}
+            icon = level_icons.get(cog["level"], "⚪")
+            lines.append(f"{icon} Kognitiv yuk: {cog['level'].upper()}")
+            lines.append(f"💡 {cog['suggestion']}")
+            console.print(Panel("\n".join(lines), title="🌅 Bugungi To'liq Sharh"))
+
+        elif cmd == "/focus":
+            if len(parts) > 1 and parts[1].lower() == "stop":
+                console.print(Panel(time_engine.stop_focus(), title="⏹ Focus To'xtatildi"))
+            else:
+                try:
+                    minutes = int(parts[1]) if len(parts) > 1 else 25
+                except (ValueError, IndexError):
+                    minutes = 25
+                console.print(Panel(time_engine.start_focus(minutes), title="🍅 Focus Boshlandi"))
+
+        elif cmd == "/cognitive":
+            console.print(Panel(cognitive.format_report(homework_mgr), title="🧠 Kognitiv Yuk"))
+
+        elif cmd == "/reflect":
+            console.print(Panel(narrative.get_weekly_reflection(homework_mgr), title="📖 Haftalik Aks Ettirish"))
 
         else:
             console.print(

@@ -10,6 +10,14 @@ from typing import Optional
 
 from .ai_router import AIRouter
 from .education import SmartEducation
+from .intelligence import (
+    CognitiveLoadBalancer,
+    TimePerceptionEngine,
+    AntiProcrastinationEngine,
+    LifeNarrativeEngine,
+    AITutorMode,
+    PersonalityAdapter,
+)
 from .modes import ModeManager
 from .language import LanguageDetector
 from .memory import MemoryManager
@@ -35,9 +43,17 @@ _AUTO_CMD = "/auto"
 _STATUS_CMD = "/status"
 
 _SYSTEM_BASE = (
-    "You are JARVIS-X, an autonomous AI agent. "
-    "You can help with coding, research, planning, and general questions. "
-    "You have access to tools, memory, and documents."
+    "You are JARVIS, a professional AI life assistant designed to act as a second brain, "
+    "strategic thinking partner, and productivity optimizer. "
+    "You help the user think, learn, plan, and act more effectively.\n\n"
+    "Core principles:\n"
+    "- Always reduce mental effort\n"
+    "- Provide structured outputs\n"
+    "- Offer actionable steps\n"
+    "- Adapt to user behavior\n"
+    "- Never overcomplicate\n"
+    "- Never overwhelm with notifications\n"
+    "- Never provide generic advice"
 )
 
 
@@ -57,6 +73,13 @@ class Jarvis:
         self.tools = ToolRegistry()
         self.rag = RAGEngine()
         self.education = SmartEducation()
+        # Intelligence modules
+        self.cognitive = CognitiveLoadBalancer()
+        self.time_engine = TimePerceptionEngine()
+        self.anti_procrastination = AntiProcrastinationEngine()
+        self.narrative = LifeNarrativeEngine()
+        self.tutor = AITutorMode()
+        self.personality = PersonalityAdapter()
         self._register_builtin_tools()
 
         # RAG hujjatlarini yuklash
@@ -65,6 +88,14 @@ class Jarvis:
                 self.rag.ingest_directory(rag_dir)
             except Exception:
                 pass
+
+    def _get_homework_manager(self):
+        """Return a HomeworkManager instance, or None on failure."""
+        try:
+            from life import HomeworkManager
+            return HomeworkManager()
+        except Exception:
+            return None
 
     def _register_builtin_tools(self) -> None:
         """O'rnatilgan vositalarni ro'yxatga olish."""
@@ -167,6 +198,7 @@ class Jarvis:
                 f"  • Model: **{model_str}**",
                 f"  • Mavjud provayderlar: {available}",
                 f"  • AI tayyor: {ai_icon}",
+                f"  • Xotira: {status['memory']['storage_backend']}",
             ]
             study_stats = self.education.get_study_stats()
             if study_stats["total_sessions"] > 0:
@@ -174,23 +206,49 @@ class Jarvis:
                     f"  • O'qish: {study_stats['total_hours']} soat "
                     f"({study_stats['total_sessions']} sessiya)"
                 )
-            focus_check = self.education.check_focus()
-            if focus_check:
-                lines.append(f"  • {focus_check}")
+            focus_stats = self.time_engine.get_focus_stats()
+            if focus_stats["active"]:
+                lines.append(
+                    f"  • Focus: 🔥 {focus_stats['remaining_minutes']} daqiqa qoldi"
+                )
+            else:
+                lines.append(
+                    f"  • Focus: 😴 Nofaol "
+                    f"({focus_stats['sessions_completed']} sessiya bajarilgan)"
+                )
+            cog_level = status.get("cognitive_load", "unknown")
+            lines.append(f"  • Kognitiv yuk: {cog_level.upper()}")
             return "\n".join(lines)
 
-        # /focus [minutes] — Focus/Pomodoro boshlash
+        # /focus [minutes] | /focus stop — Focus/Pomodoro boshlash yoki to'xtatish
         if cmd == "/focus":
+            if len(parts) > 1 and parts[1].lower() == "stop":
+                result = self.time_engine.stop_focus()
+                # Also stop education focus tracker for backward compat
+                self.education.end_focus()
+                return result
             try:
                 minutes = int(parts[1]) if len(parts) > 1 else 25
             except (ValueError, IndexError):
                 minutes = 25
             self.mode_manager.set_mode("focus")
+            self.time_engine.start_focus(minutes)
             return self.education.start_focus(minutes)
 
-        # /focus_end — Focus ni tugatish
+        # /focus_end — Focus ni tugatish (backward compat)
         if cmd == "/focus_end":
+            self.time_engine.stop_focus()
             return self.education.end_focus()
+
+        # /cognitive — kognitiv yuk tahlili
+        if cmd == "/cognitive":
+            hw = self._get_homework_manager()
+            return self.cognitive.format_report(hw)
+
+        # /reflect — haftalik aks ettirish
+        if cmd == "/reflect":
+            hw = self._get_homework_manager()
+            return self.narrative.get_weekly_reflection(hw)
 
         # /study_start <subject> — O'qish sessiyasini boshlash
         if cmd == "/study_start":
@@ -258,14 +316,11 @@ class Jarvis:
 
         # /overload — ish yuki tekshirish
         if cmd == "/overload":
-            try:
-                from life import HomeworkManager
-
-                hw = HomeworkManager()
+            hw = self._get_homework_manager()
+            if hw is not None:
                 result = self.education.check_overload(hw)
                 return result or "✅ Hozircha ish yuki normal. Davom eting!"
-            except Exception:
-                return "✅ Ish yuki tekshirildi — normal."
+            return "✅ Ish yuki tekshirildi — normal."
 
         # /today — bugungi to'liq plan
         if cmd == "/today":
@@ -289,10 +344,8 @@ class Jarvis:
             except Exception:
                 lines.append("🏫 Jadval mavjud emas")
             lines.append("")
-            try:
-                from life import HomeworkManager
-
-                hw = HomeworkManager()
+            hw = self._get_homework_manager()
+            if hw is not None:
                 pending = hw.get_pending_homework()
                 if pending:
                     lines.append(f"📝 Uy vazifalari ({len(pending)} ta):")
@@ -300,7 +353,14 @@ class Jarvis:
                         lines.append(f"  • {h.subject}: {h.description}")
                 else:
                     lines.append("📝 Uy vazifalari yo'q ✅")
-            except Exception:
+                # Kognitiv yuk
+                cog = self.cognitive.get_analysis(hw)
+                lines.append("")
+                level_icons = {"low": "🟢", "moderate": "🟡", "high": "🟠", "critical": "🔴"}
+                icon = level_icons.get(cog["level"], "⚪")
+                lines.append(f"{icon} Kognitiv yuk: {cog['level'].upper()}")
+                lines.append(f"💡 {cog['suggestion']}")
+            else:
                 lines.append("📝 Vazifalar mavjud emas")
             stats = self.education.get_study_stats()
             if stats["total_sessions"] > 0:
@@ -337,7 +397,10 @@ class Jarvis:
             pass
 
         # Tizim promptini yaratish
-        system_prompt = self.mode_manager.get_system_prompt()
+        system_prompt = f"{_SYSTEM_BASE}\n\n{self.mode_manager.get_system_prompt()}"
+        personality_instruction = self.personality.get_instruction()
+        if personality_instruction:
+            system_prompt = f"{system_prompt}\n\n{personality_instruction}"
         lang_instruction = self.language.get_language_instruction()
         if lang_instruction:
             system_prompt = f"{system_prompt}\n\n{lang_instruction}"
@@ -374,6 +437,10 @@ class Jarvis:
 
     def get_status(self) -> dict:
         """Joriy holat ma'lumotlari."""
+        cog_level = "unknown"
+        hw = self._get_homework_manager()
+        if hw is not None:
+            cog_level = self.cognitive.get_analysis(hw)["level"]
         return {
             "mode": self.mode_manager.get_current_mode_name(),
             "language": self.language.get_response_language(),
@@ -382,4 +449,6 @@ class Jarvis:
             "memory": self.memory.get_stats(),
             "rag": self.rag.get_stats(),
             "tools": self.tools.get_tool_names(),
+            "cognitive_load": cog_level,
+            "focus_state": self.time_engine.get_focus_stats(),
         }
