@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import argparse
 import sys
+from datetime import datetime
+from pathlib import Path
 
 try:
     from dotenv import load_dotenv
@@ -157,12 +159,26 @@ def run_jarvis(args: argparse.Namespace) -> None:
         with console.status("[dim]Fikrlayapman...[/dim]"):
             response = jarvis.process(user_input)
 
-        console.print(f"\n[bold green]🤖 JARVIS:[/bold green]")
+        # Terminal tozalash va faqat oxirgi savol-javobni ko'rsatish
+        console.clear()
+        console.print(f"[bold cyan]🧑 Siz:[/bold cyan] {user_input}\n")
+        console.print(f"[bold green]🤖 JARVIS:[/bold green]")
         try:
             console.print(Markdown(response))
         except Exception:
             console.print(response)
         console.print()
+
+        # Suhbat logini faylga saqlash
+        log_file = Path(__file__).parent / "data" / "chat_history.log"
+        log_file.parent.mkdir(parents=True, exist_ok=True)
+        current_mode = jarvis.get_status().get("mode", "unknown")
+        timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        with log_file.open("a", encoding="utf-8") as f:
+            f.write(f"[{timestamp}] [MODE: {current_mode}]\n")
+            f.write(f"🧑 Siz: {user_input}\n")
+            f.write(f"🤖 JARVIS: {response}\n")
+            f.write("---\n")
 
         # Ovozli javob
         if voice_engine and voice_engine.is_available:
