@@ -1,0 +1,14 @@
+# JARVIS-X Dependencies
+# Core
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+openai>=1.0.0
+httpx>=0.27.0
+rich>=13.0.0
+python-dotenv>=1.0.0
+
+# Voice (optional - uncomment to enable):
+# SpeechRecognition>=3.10.0
+# pyttsx3>=2.90
+# gTTS>=2.5.0
+# playsound>=1.3.0
