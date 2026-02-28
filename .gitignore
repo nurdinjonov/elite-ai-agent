@@ -9,4 +9,7 @@ build/
 .env
 data/memory/
 data/schedule/*.json
+data/energy.json
+data/expenses.json
+data/chat_history.log
 runtime/

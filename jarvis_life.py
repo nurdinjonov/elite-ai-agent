@@ -301,7 +301,7 @@ def _intent_to_cmd(intent_info: dict, raw_input: str) -> str:
     return base_cmd
 
 
-
+def main() -> None:
     """Asosiy tsikl."""
     # Intent parser
     try:
