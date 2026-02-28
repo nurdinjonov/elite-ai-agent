@@ -116,7 +116,8 @@ def run_jarvis(args: argparse.Namespace) -> None:
     )
 
     console.print(
-        "\n[dim]Buyruqlar: /fast, /code, /pro — rejim | /provider — provayder | /model — model | /status — holat | /exit — chiqish[/dim]\n"
+        "\n[dim]Buyruqlar: /fast /code /pro /study /focus /planner — rejim | "
+        "/providers /models — AI | /today /status /modes /help — umumiy | /exit — chiqish[/dim]\n"
     )
 
     # Ovoz rejimi

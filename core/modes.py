@@ -1,5 +1,5 @@
 """
-Mode tizimi — FAST, CODE, PRO rejimlarini boshqarish.
+Mode tizimi — FAST, CODE, PRO va kengaytirilgan rejimlarni boshqarish.
 """
 
 from __future__ import annotations
@@ -56,11 +56,89 @@ _MODES: dict[str, dict] = {
             "comprehensive answers",
         ],
     },
+    "study": {
+        "name": "STUDY",
+        "system_prompt": (
+            "You are JARVIS, an AI tutor and study assistant. "
+            "Explain topics clearly and simply. "
+            "Generate summaries, quizzes, and practice questions. "
+            "Help prepare for exams. Provide examples. "
+            "If user asks in Uzbek, respond in Uzbek. "
+            "Structure explanations with headings, bullet points, and examples."
+        ),
+        "preferred_models": ["pro"],
+        "behavior_rules": [
+            "structured explanations",
+            "generate quizzes on request",
+            "exam preparation",
+            "multi-language support",
+        ],
+    },
+    "planner": {
+        "name": "PLANNER",
+        "system_prompt": (
+            "You are JARVIS, a daily planning assistant. "
+            "Help organize the day with classes, study sessions, breaks, and tasks. "
+            "Suggest optimal schedules. Be proactive about time management."
+        ),
+        "preferred_models": ["fast"],
+        "behavior_rules": [
+            "time-aware responses",
+            "schedule optimization",
+            "proactive suggestions",
+        ],
+    },
+    "focus": {
+        "name": "FOCUS",
+        "system_prompt": (
+            "You are JARVIS in deep focus mode. "
+            "Keep responses ultra-brief. Only allow urgent topics. "
+            "Help maintain concentration. Suggest Pomodoro timers. "
+            "Suppress distractions."
+        ),
+        "preferred_models": ["fast"],
+        "behavior_rules": [
+            "minimal responses",
+            "focus-oriented",
+            "pomodoro support",
+            "distraction blocking",
+        ],
+    },
+    "analytics": {
+        "name": "ANALYTICS",
+        "system_prompt": (
+            "You are JARVIS analytics assistant. "
+            "Provide productivity insights, study time analysis, "
+            "task completion rates, and weekly reports. "
+            "Use data to suggest improvements."
+        ),
+        "preferred_models": ["pro"],
+        "behavior_rules": [
+            "data-driven insights",
+            "productivity tracking",
+            "weekly reports",
+            "improvement suggestions",
+        ],
+    },
+    "automation": {
+        "name": "AUTOMATION",
+        "system_prompt": (
+            "You are JARVIS automation assistant. "
+            "Help automate repetitive tasks, create scripts, "
+            "set up workflows, and reduce manual effort."
+        ),
+        "preferred_models": ["code"],
+        "behavior_rules": [
+            "task automation",
+            "workflow creation",
+            "efficiency optimization",
+        ],
+    },
 }
 
 
 class ModeManager:
-    """Rejim boshqaruvchisi — FAST, CODE, PRO."""
+    """Rejim boshqaruvchisi — FAST, CODE, PRO va kengaytirilgan rejimlar."""
 
     def __init__(self, default_mode: str = "pro") -> None:
         self._current_mode = default_mode if default_mode in _MODES else "pro"

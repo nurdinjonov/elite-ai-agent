@@ -5,9 +5,11 @@ Barcha modullarni birlashtiradi va foydalanuvchi so'rovlarini qayta ishlaydi.
 
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Optional
 
 from .ai_router import AIRouter
+from .education import SmartEducation
 from .modes import ModeManager
 from .language import LanguageDetector
 from .memory import MemoryManager
@@ -18,6 +20,11 @@ _MODE_COMMANDS = {
     "/fast": "fast",
     "/code": "code",
     "/pro": "pro",
+    "/study": "study",
+    "/planner": "planner",
+    "/analytics": "analytics",
+    "/automation": "automation",
+    "/default": "pro",
 }
 
 _PROVIDER_CMD = "/provider"
@@ -49,6 +56,7 @@ class Jarvis:
         self.memory = MemoryManager()
         self.tools = ToolRegistry()
         self.rag = RAGEngine()
+        self.education = SmartEducation()
         self._register_builtin_tools()
 
         # RAG hujjatlarini yuklash
@@ -152,14 +160,153 @@ class Jarvis:
             model_str = forced_model if forced_model else "avtomatik (rejimga qarab)"
             available = ", ".join(status["providers"]) if status["providers"] else "yo'q"
             ai_icon = "✅" if status["ai_available"] else "❌"
-            return (
-                "**Hozirgi holat:**\n"
-                f"  • Rejim: **{status['mode'].upper()}**\n"
-                f"  • Provayder: **{provider_str}**\n"
-                f"  • Model: **{model_str}**\n"
-                f"  • Mavjud provayderlar: {available}\n"
-                f"  • AI tayyor: {ai_icon}"
-            )
+            lines = [
+                "**Hozirgi holat:**",
+                f"  • Rejim: **{status['mode'].upper()}**",
+                f"  • Provayder: **{provider_str}**",
+                f"  • Model: **{model_str}**",
+                f"  • Mavjud provayderlar: {available}",
+                f"  • AI tayyor: {ai_icon}",
+            ]
+            study_stats = self.education.get_study_stats()
+            if study_stats["total_sessions"] > 0:
+                lines.append(
+                    f"  • O'qish: {study_stats['total_hours']} soat "
+                    f"({study_stats['total_sessions']} sessiya)"
+                )
+            focus_check = self.education.check_focus()
+            if focus_check:
+                lines.append(f"  • {focus_check}")
+            return "\n".join(lines)
+
+        # /focus [minutes] — Focus/Pomodoro boshlash
+        if cmd == "/focus":
+            try:
+                minutes = int(parts[1]) if len(parts) > 1 else 25
+            except (ValueError, IndexError):
+                minutes = 25
+            self.mode_manager.set_mode("focus")
+            return self.education.start_focus(minutes)
+
+        # /focus_end — Focus ni tugatish
+        if cmd == "/focus_end":
+            return self.education.end_focus()
+
+        # /study_start <subject> — O'qish sessiyasini boshlash
+        if cmd == "/study_start":
+            subject = " ".join(parts[1:]) if len(parts) > 1 else "Umumiy"
+            return self.education.start_study_session(subject)
+
+        # /study_end — O'qish sessiyasini tugatish
+        if cmd == "/study_end":
+            return self.education.end_study_session()
+
+        # /study_stats — O'qish statistikasi
+        if cmd == "/study_stats":
+            stats = self.education.get_study_stats()
+            lines = [
+                "📊 O'qish Statistikasi",
+                f"📚 Jami sessiyalar: {stats['total_sessions']}",
+                f"⏱ Jami vaqt: {stats['total_hours']} soat ({stats['total_minutes']} daqiqa)",
+                "",
+                "📖 Fanlar bo'yicha:",
+            ]
+            for subj, mins in stats["by_subject"].items():
+                lines.append(f"  • {subj}: {mins} daqiqa")
+            if not stats["by_subject"]:
+                lines.append("  Hali sessiya yo'q")
+            return "\n".join(lines)
+
+        # /hw_help <subject> <description> — Uy vazifasi bo'yicha AI yordam
+        if cmd == "/hw_help":
+            if len(parts) < 3:
+                return "Foydalanish: /hw_help <fan> <tavsif>"
+            subject = parts[1]
+            description = " ".join(parts[2:])
+            prompt = self.education.homework_help_prompt(subject, description)
+            messages = [
+                {"role": "system", "content": self.mode_manager.get_system_prompt()},
+                {"role": "user", "content": prompt},
+            ]
+            try:
+                return self.router.route_request(messages=messages, mode="pro")
+            except Exception as exc:
+                return f"❌ Xato: {exc}"
+
+        # /modes — barcha rejimlar ro'yxati
+        if cmd == "/modes":
+            modes = self.mode_manager.list_modes()
+            current = self.mode_manager.get_current_mode_name()
+            lines = ["🧭 Mavjud rejimlar:", ""]
+            for m in modes:
+                info = self.mode_manager.get_mode(m)
+                marker = " ✅" if m == current else ""
+                lines.append(f"  /{m} — {info['name']}{marker}")
+            lines.append("")
+            lines.append("O'zgartirish: /mode <nom> yoki /<nom>")
+            return "\n".join(lines)
+
+        # /mode <name> — rejim almashtirish
+        if cmd == "/mode":
+            if len(parts) < 2:
+                return self.process("/modes")
+            mode_name = parts[1].lower()
+            if self.mode_manager.set_mode(mode_name):
+                info = self.mode_manager.get_mode()
+                return f"✅ Rejim o'zgartirildi: **{info['name']}**"
+            return f"❌ Noma'lum rejim: {mode_name}. /modes ni ko'ring."
+
+        # /overload — ish yuki tekshirish
+        if cmd == "/overload":
+            try:
+                from life import HomeworkManager
+
+                hw = HomeworkManager()
+                result = self.education.check_overload(hw)
+                return result or "✅ Hozircha ish yuki normal. Davom eting!"
+            except Exception:
+                return "✅ Ish yuki tekshirildi — normal."
+
+        # /today — bugungi to'liq plan
+        if cmd == "/today":
+            lines = [
+                f"📅 Bugungi Reja — {datetime.now().strftime('%Y-%m-%d %A')}",
+                "",
+            ]
+            try:
+                from life import SmartScheduler
+
+                sched = SmartScheduler()
+                classes = sched.get_schedule()
+                if classes:
+                    lines.append(f"🏫 Darslar ({len(classes)} ta):")
+                    for c in classes:
+                        lines.append(
+                            f"  {c.start_time}-{c.end_time}: {c.name} ({c.location or '-'})"
+                        )
+                else:
+                    lines.append("🏫 Bugun dars yo'q")
+            except Exception:
+                lines.append("🏫 Jadval mavjud emas")
+            lines.append("")
+            try:
+                from life import HomeworkManager
+
+                hw = HomeworkManager()
+                pending = hw.get_pending_homework()
+                if pending:
+                    lines.append(f"📝 Uy vazifalari ({len(pending)} ta):")
+                    for h in pending[:5]:
+                        lines.append(f"  • {h.subject}: {h.description}")
+                else:
+                    lines.append("📝 Uy vazifalari yo'q ✅")
+            except Exception:
+                lines.append("📝 Vazifalar mavjud emas")
+            stats = self.education.get_study_stats()
+            if stats["total_sessions"] > 0:
+                lines.append("")
+                lines.append(f"📊 Bugungi o'qish: {stats['total_minutes']} daqiqa")
+            return "\n".join(lines)
 
         # Tilni aniqlash
         detected_lang = self.language.detect(user_input)
