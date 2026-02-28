@@ -435,6 +435,50 @@ class Jarvis:
 
         return response
 
+    def process_intent(self, intent: str, params: dict) -> str:
+        """Intent parser natijasini qayta ishlash.
+
+        Intent nomini mavjud slash buyruqqa moslab ``process()`` ga yuboradi.
+        Noma'lum intent yoki ``"chat"`` bo'lsa original matn qaytariladi.
+
+        Args:
+            intent: IntentParser tomonidan aniqlangan intent nomi.
+            params: IntentParser tomonidan ajratilgan parametrlar.
+
+        Returns:
+            JARVIS javobi.
+        """
+        _intent_to_command: dict[str, str] = {
+            "show_status": "/status",
+            "show_schedule": "/schedule",
+            "show_week": "/week",
+            "show_homework": "/homework",
+            "show_tasks": "/tasks",
+            "show_plan": "/plan",
+            "show_today": "/today",
+            "show_stats": "/stats",
+            "show_reminders": "/reminders",
+            "start_focus": "/focus",
+            "stop_focus": "/focus stop",
+            "show_help": "/help",
+            "show_cognitive": "/cognitive",
+            "show_reflect": "/reflect",
+            "show_modes": "/modes",
+            "change_mode": "/mode",
+        }
+        cmd = _intent_to_command.get(intent)
+        if cmd:
+            # Parametrlarni buyruqqa qo'shish
+            if intent == "change_mode" and params.get("mode"):
+                cmd = f"/mode {params['mode']}"
+            elif intent == "start_focus" and params.get("minutes"):
+                cmd = f"/focus {params['minutes']}"
+            elif intent == "show_schedule" and params.get("day"):
+                cmd = f"/schedule {params['day']}"
+            return self.process(cmd)
+        # Chat yoki noma'lum intent — original matni qaytarish
+        return self.process(params.get("original", ""))
+
     def get_status(self) -> dict:
         """Joriy holat ma'lumotlari."""
         cog_level = "unknown"
