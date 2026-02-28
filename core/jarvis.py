@@ -6,6 +6,7 @@ Barcha modullarni birlashtiradi va foydalanuvchi so'rovlarini qayta ishlaydi.
 from __future__ import annotations
 
 from datetime import datetime
+from pathlib import Path
 from typing import Optional
 
 from .ai_router import AIRouter
@@ -55,6 +56,22 @@ _SYSTEM_BASE = (
     "- Never overwhelm with notifications\n"
     "- Never provide generic advice"
 )
+
+
+def _load_system_prompt() -> str:
+    """System promptni fayldan yuklash.
+
+    config/prompts/system_prompt.md fayldan o'qiydi.
+    Fayl topilmasa, mavjud _SYSTEM_BASE ishlatiladi (backward compatible).
+
+    Returns:
+        System prompt matni.
+    """
+    prompt_path = Path(__file__).parent.parent / "config" / "prompts" / "system_prompt.md"
+    try:
+        return prompt_path.read_text(encoding="utf-8")
+    except FileNotFoundError:
+        return _SYSTEM_BASE
 
 
 class Jarvis:
@@ -397,7 +414,7 @@ class Jarvis:
             pass
 
         # Tizim promptini yaratish
-        system_prompt = f"{_SYSTEM_BASE}\n\n{self.mode_manager.get_system_prompt()}"
+        system_prompt = f"{_load_system_prompt()}\n\n{self.mode_manager.get_system_prompt()}"
         personality_instruction = self.personality.get_instruction()
         if personality_instruction:
             system_prompt = f"{system_prompt}\n\n{personality_instruction}"

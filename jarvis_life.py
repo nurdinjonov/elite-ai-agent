@@ -303,6 +303,8 @@ def _intent_to_cmd(intent_info: dict, raw_input: str) -> str:
 
 def main() -> None:
     """Asosiy tsikl."""
+    from core.ui_renderer import UIRenderer
+
     # Intent parser
     try:
         from core.intent_parser import IntentParser
@@ -318,9 +320,10 @@ def main() -> None:
     time_engine = TimePerceptionEngine()
     narrative = LifeNarrativeEngine()
 
+    ui = UIRenderer()
+
     # Startup ekrani
-    _clear_screen()
-    print_banner()
+    ui.startup()
 
     # Ertalabki xulosa
     console.print(Panel(planner.get_morning_briefing(), title="🌅 Ertalabki Xulosa"))
@@ -338,13 +341,7 @@ def main() -> None:
     last_query: str | None = None
 
     while True:
-        _clear_screen()
-        _render_header()
-
-        # Oxirgi chiqishni ko'rsatish
-        if last_query and last_output:
-            console.print(f"\n[bold cyan]🧑 Siz:[/bold cyan] {last_query}")
-            console.print(f"[bold green]🤖 JARVIS:[/bold green] {last_output}\n")
+        ui.full_redraw(query=last_query or "", response=last_output or "")
 
         try:
             user_input = console.input("[bold cyan]🧑 Siz:[/bold cyan] ").strip()

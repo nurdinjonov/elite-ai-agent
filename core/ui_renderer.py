@@ -136,3 +136,44 @@ class UIRenderer:
                 print(f"🧑 Siz: {query}")
             if response:
                 print(f"🤖 JARVIS: {response}")
+
+    def full_redraw(
+        self,
+        mode: str = "JARVIS",
+        ai_status: bool = True,
+        query: str = "",
+        response: str = "",
+    ) -> None:
+        """To'liq ekran qayta chizish (render_full_screen uchun qulay nom).
+
+        Args:
+            mode: Joriy rejim nomi.
+            ai_status: AI tayyor holati.
+            query: Oxirgi foydalanuvchi so'rovi (ixtiyoriy).
+            response: Oxirgi JARVIS javobi (ixtiyoriy).
+        """
+        self.render_full_screen(mode, ai_status, query, response)
+
+    def startup(
+        self,
+        mode: str = "JARVIS",
+        ai_status: bool = True,
+        providers: list[str] | None = None,
+    ) -> None:
+        """Startup ekranini ko'rsatish.
+
+        Args:
+            mode: Joriy rejim nomi.
+            ai_status: AI tayyor holati.
+            providers: Mavjud provayder nomlari ro'yxati.
+        """
+        try:
+            from rich.console import Console
+
+            console = Console()
+            self.clear_screen()
+            console.print(self.render_startup(mode, ai_status, providers or []))
+        except ImportError:
+            self.clear_screen()
+            providers_str = ", ".join(providers) if providers else "yo'q"
+            print(f"JARVIS • {mode.upper()} | Provayderlar: {providers_str}")
