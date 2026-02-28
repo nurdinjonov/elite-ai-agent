@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Optional
 
 from .ai_router import AIRouter
+from .auto_mode import AutoModeSwitcher
 from .education import SmartEducation
 from .intelligence import (
     CognitiveLoadBalancer,
@@ -59,19 +60,25 @@ _SYSTEM_BASE = (
 
 
 def _load_system_prompt() -> str:
-    """System promptni fayldan yuklash.
+    """System promptlarni fayllardan yuklash.
 
-    config/prompts/system_prompt.md fayldan o'qiydi.
-    Fayl topilmasa, mavjud _SYSTEM_BASE ishlatiladi (backward compatible).
+    config/prompts/ papkasidagi system_prompt.md, core_behavior.md va
+    ui_rules.md fayllarini birlashtiradi.  Fayl topilmasa o'tkazib yuboriladi.
+    Hech qanday fayl topilmasa mavjud _SYSTEM_BASE ishlatiladi (backward compatible).
 
     Returns:
         System prompt matni.
     """
-    prompt_path = Path(__file__).parent.parent / "config" / "prompts" / "system_prompt.md"
-    try:
-        return prompt_path.read_text(encoding="utf-8")
-    except FileNotFoundError:
-        return _SYSTEM_BASE
+    prompts_dir = Path(__file__).parent.parent / "config" / "prompts"
+    combined = ""
+    for prompt_file in ["system_prompt.md", "core_behavior.md", "ui_rules.md"]:
+        path = prompts_dir / prompt_file
+        if path.exists():
+            try:
+                combined += path.read_text(encoding="utf-8") + "\n\n"
+            except Exception:
+                continue
+    return combined.strip() or _SYSTEM_BASE
 
 
 class Jarvis:
@@ -97,6 +104,7 @@ class Jarvis:
         self.narrative = LifeNarrativeEngine()
         self.tutor = AITutorMode()
         self.personality = PersonalityAdapter()
+        self.auto_mode = AutoModeSwitcher()
         self._register_builtin_tools()
 
         # RAG hujjatlarini yuklash
@@ -163,6 +171,13 @@ class Jarvis:
         """
         if not user_input.strip():
             return ""
+
+        # Auto mode switching (slash buyruqlar uchun emas)
+        if not user_input.startswith("/"):
+            detected_mode = self.auto_mode.detect_mode(user_input)
+            current_mode = self.mode_manager.get_current_mode_name()
+            if self.auto_mode.should_switch(current_mode, detected_mode):
+                self.mode_manager.set_mode(detected_mode)
 
         # Rejim almashtirish buyruqlarini tekshirish
         parts = user_input.strip().split()
