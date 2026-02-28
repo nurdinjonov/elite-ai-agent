@@ -1,3 +1,3 @@
-# Configuration package initialization
+# Configuration package
 
-"""This package is used to hold configuration for the elite AI agent."""
+# This is the __init__.py file for the config package.
