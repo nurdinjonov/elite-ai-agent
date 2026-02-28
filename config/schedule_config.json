@@ -1,0 +1,43 @@
+{
+  "default_wake_up": "07:00",
+  "class_alert_minutes": 15,
+  "study_block_min_minutes": 30,
+  "break_after_minutes": 90,
+  "break_duration_minutes": 15,
+  "post_class_homework_check_minutes": 5,
+  "deadline_warning_days": [0, 1, 3],
+  "sample_schedule": [
+    {
+      "name": "Matematika",
+      "day": "monday",
+      "start_time": "09:00",
+      "end_time": "10:30",
+      "location": "201-xona",
+      "teacher": "Prof. Karimov"
+    },
+    {
+      "name": "Fizika",
+      "day": "monday",
+      "start_time": "11:00",
+      "end_time": "12:30",
+      "location": "305-xona",
+      "teacher": "Prof. Rahimov"
+    },
+    {
+      "name": "Dasturlash",
+      "day": "tuesday",
+      "start_time": "09:00",
+      "end_time": "10:30",
+      "location": "Lab-2",
+      "teacher": "Prof. Alimov"
+    },
+    {
+      "name": "Ingliz tili",
+      "day": "wednesday",
+      "start_time": "14:00",
+      "end_time": "15:30",
+      "location": "101-xona",
+      "teacher": "Ms. Johnson"
+    }
+  ]
+}
