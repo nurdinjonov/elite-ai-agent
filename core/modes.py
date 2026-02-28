@@ -59,12 +59,10 @@ _MODES: dict[str, dict] = {
     "study": {
         "name": "STUDY",
         "system_prompt": (
-            "You are JARVIS, an AI tutor and study assistant. "
-            "Explain topics clearly and simply. "
-            "Generate summaries, quizzes, and practice questions. "
-            "Help prepare for exams. Provide examples. "
-            "If user asks in Uzbek, respond in Uzbek. "
-            "Structure explanations with headings, bullet points, and examples."
+            "You are JARVIS-X, an intelligent study assistant. "
+            "Help the user learn effectively. "
+            "Create summaries, explain concepts, generate practice questions. "
+            "Use the Feynman technique when explaining."
         ),
         "preferred_models": ["pro"],
         "behavior_rules": [
@@ -77,9 +75,9 @@ _MODES: dict[str, dict] = {
     "planner": {
         "name": "PLANNER",
         "system_prompt": (
-            "You are JARVIS, a daily planning assistant. "
-            "Help organize the day with classes, study sessions, breaks, and tasks. "
-            "Suggest optimal schedules. Be proactive about time management."
+            "You are JARVIS-X, a life planning assistant. "
+            "Help organize daily routines, set priorities, manage time blocks, "
+            "and create actionable plans."
         ),
         "preferred_models": ["fast"],
         "behavior_rules": [
@@ -91,10 +89,9 @@ _MODES: dict[str, dict] = {
     "focus": {
         "name": "FOCUS",
         "system_prompt": (
-            "You are JARVIS in deep focus mode. "
-            "Keep responses ultra-brief. Only allow urgent topics. "
-            "Help maintain concentration. Suggest Pomodoro timers. "
-            "Suppress distractions."
+            "You are JARVIS-X in focus mode. "
+            "Minimize distractions. Give ultra-brief responses. "
+            "Only respond to the current task. No side conversations."
         ),
         "preferred_models": ["fast"],
         "behavior_rules": [

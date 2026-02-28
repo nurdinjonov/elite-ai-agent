@@ -2,6 +2,19 @@
 
 JARVIS-X — Smart Life Assistant, Multi-AI Orchestration, Memory tizimi, RAG va ko'plab vositalar bilan jihozlangan to'liq avtonom AI Agent.
 
+## JARVIS Roli
+
+JARVIS — professional AI life assistant sifatida ikkinchi miya, strategik fikrlash hamkori va mahsuldorlik optimizatori bo'lib xizmat qiladi. U foydalanuvchiga samaraliroq fikrlash, o'rganish, rejalashtirish va harakat qilishda yordam beradi.
+
+**Asosiy tamoyillar:**
+- Aqliy harakatni doimo kamaytirish
+- Tuzilgan chiqishlarni taqdim etish
+- Amaliy qadamlarni taklif qilish
+- Foydalanuvchi xatti-harakatlariga moslashish
+- Hech qachon murakkablashtirmaslik
+- Hech qachon bildirishnomalar bilan haddan tashqari ko'p bezovta qilmaslik
+- Hech qachon umumiy maslahat bermaslik
+
 ## Xususiyatlar
 
 - 🤖 **Multi-AI Orchestration** — OpenRouter, Groq provayderlarini qo'llab-quvvatlaydi
@@ -11,6 +24,7 @@ JARVIS-X — Smart Life Assistant, Multi-AI Orchestration, Memory tizimi, RAG va
 - 🎓 **Life Assistant** — Dars jadvali, uy vazifalari, kundalik reja
 - 🌐 **Ko'p tilli** — O'zbek, Ingliz, Rus tillarini avtomatik aniqlaydi
 - 🎙 **Voice** (ixtiyoriy) — Whisper STT + piper TTS
+- 🧬 **Intelligence Modules** — Kognitiv yuk, fokus, prokrastinatsiya, o'qitish
 
 ## Tezkor ishga tushirish
 
@@ -39,6 +53,29 @@ python start.py --life-only
 | PRO | `/pro` | Batafsil, tadqiqot darajasidagi javoblar |
 | CODE | `/code` | Kod yozishga ixtisoslashgan |
 | FAST | `/fast` | Tez, qisqa javoblar |
+| STUDY | `/study` | O'qitish yordamchisi — Feynman texnikasi |
+| FOCUS | `/focus` | Ultra-qisqa javoblar, faqat joriy vazifa |
+| PLANNER | `/planner` | Kundalik reja va vaqtni boshqarish |
+
+## Intelligence Modullari
+
+### CognitiveLoadBalancer
+Aqliy ish yukini kuzatadi: vazifalar soni, muddat bosimi va dam olish naqshlari asosida yuk darajasini hisoblaydi: `low`, `moderate`, `high`, `critical`.
+
+### TimePerceptionEngine
+Pomodoro tsikllari (25 daq ish / 5 daq tanaffus) va chuqur ish bloklari yordamida vaqtni tuziladi. Joriy fokus sessiyasini kuzatadi.
+
+### AntiProcrastinationEngine
+Takroriy kechiktirishlarni aniqlaydi. 5 daqiqalik boshlash texnikasini va micro-qadam strategiyasini taklif qiladi.
+
+### LifeNarrativeEngine
+Haftalik aks ettirish: yutuqlar, qiyinchiliklar, o'sish ko'rsatkichlari va maslahatlar.
+
+### AITutorMode
+Mavzularni tushuntirish, xulosa yaratish, viktorina generatsiyasi, uy vazifasiga yordam va o'qish rejasi.
+
+### PersonalityAdapter
+Foydalanuvchi afzalliklariga moslashadi: `concise`/`detailed`, `motivational`/`neutral`, `technical`/`simple`.
 
 ## Arxitektura
 
@@ -52,7 +89,9 @@ elite-ai-agent/
 ├── core/                  # AI Agent modullari
 │   ├── jarvis.py          # Asosiy Orchestrator
 │   ├── ai_router.py       # Multi-AI yo'naltiruvchi
-│   ├── modes.py           # Rejim tizimi
+│   ├── modes.py           # Rejim tizimi (FAST/CODE/PRO/STUDY/FOCUS/PLANNER)
+│   ├── intelligence.py    # Intelligence modullari (yangi)
+│   ├── education.py       # O'qish va focus tracking
 │   ├── language.py        # Til aniqlovchi
 │   ├── memory.py          # Xotira tizimi
 │   ├── tools.py           # Vositalar reestri
@@ -84,9 +123,30 @@ elite-ai-agent/
     └── schedule/          # Jadval JSON fayllari
 ```
 
-## Life Assistant buyruqlari
+## Buyruqlar
 
-### Jadval
+### AI Agent (start.py)
+| Buyruq | Tavsif |
+|--------|--------|
+| `/fast` | FAST rejimiga o'tish |
+| `/code` | CODE rejimiga o'tish |
+| `/pro` | PRO rejimiga o'tish |
+| `/study <mavzu>` | STUDY rejimiga o'tish va mavzu haqida so'rash |
+| `/focus [daqiqa]` | Focus/Pomodoro sessiyasini boshlash (default: 25 min) |
+| `/focus stop` | Focus sessiyasini to'xtatish |
+| `/planner` | PLANNER rejimiga o'tish |
+| `/modes` | Barcha mavjud rejimlar ro'yxati |
+| `/providers` | AI provayderlar holati |
+| `/models` | Konfiguratsiya qilingan AI modellari |
+| `/today` | Bugungi to'liq sharh |
+| `/status` | To'liq tizim holati |
+| `/cognitive` | Kognitiv yuk tahlili |
+| `/reflect` | Haftalik aks ettirish |
+| `/help` | Yordam matnini ko'rsatish |
+| `/exit` | Chiqish |
+
+### Life Assistant (jarvis_life.py)
+#### Jadval
 | Buyruq | Tavsif |
 |--------|--------|
 | `/schedule` | Bugungi dars jadvali |
@@ -95,27 +155,36 @@ elite-ai-agent/
 | `/remove_class <id>` | Darsni o'chirish |
 | `/load_sample` | Namuna jadval yuklash |
 
-### Uy Vazifalari
+#### Uy Vazifalari
 | Buyruq | Tavsif |
 |--------|--------|
 | `/homework` | Bajarilmagan uy vazifalari |
 | `/add_hw <fan> <tavsif> [muddat] [ustuvorlik]` | Yangi uy vazifasi qo'shish |
 | `/done_hw <id>` | Uy vazifasini bajarilgan deb belgilash |
 
-### Vazifalar
+#### Vazifalar
 | Buyruq | Tavsif |
 |--------|--------|
 | `/tasks` | Barcha bajarilmagan vazifalar |
 | `/add_task <sarlavha> [tavsif] [muddat]` | Yangi vazifa qo'shish |
 | `/done_task <id>` | Vazifani bajarilgan deb belgilash |
 
-### Reja va Eslatmalar
+#### Reja va Eslatmalar
 | Buyruq | Tavsif |
 |--------|--------|
 | `/plan` | Bugungi optimal reja |
 | `/reminders` | Barcha eslatmalar |
 | `/stats` | Statistika |
 | `/summary` | Kun oxiri xulosasi |
+
+#### Intelligence
+| Buyruq | Tavsif |
+|--------|--------|
+| `/today` | Bugungi to'liq sharh (dars, vazifalar, kognitiv yuk) |
+| `/focus [daqiqa]` | Focus/Pomodoro sessiyasini boshlash |
+| `/focus stop` | Focus sessiyasini to'xtatish |
+| `/cognitive` | Kognitiv yuk tahlili |
+| `/reflect` | Haftalik aks ettirish |
 
 ## Sozlash
 
