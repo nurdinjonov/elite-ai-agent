@@ -1,17 +1,23 @@
 #!/bin/bash
 # JARVIS-X Linux/macOS ishga tushiruvchi
+set -e
 cd "$(dirname "$0")"
 
 VENV_DIR="runtime/venv"
 
-if [ ! -d "$VENV_DIR" ]; then
-    echo "Virtual muhit yaratilmoqda..."
-    python3 -m venv "$VENV_DIR"
-    source "$VENV_DIR/bin/activate"
-    echo "Bog'liqliklar o'rnatilmoqda..."
-    pip install -r requirements.txt
-else
-    source "$VENV_DIR/bin/activate"
+# Python3 mavjudligini tekshirish
+if ! command -v python3 &> /dev/null; then
+    echo "❌ Xato: python3 topilmadi."
+    echo "   Python 3.10+ o'rnating: https://www.python.org/downloads/"
+    exit 1
 fi
+
+if [ ! -d "$VENV_DIR" ] || [ ! -f "$VENV_DIR/bin/python" ]; then
+    echo "⚠️  Virtual muhit topilmadi. Avval sozlashni ishga tushiring:"
+    echo "   python3 setup.py"
+    exit 1
+fi
+
+source "$VENV_DIR/bin/activate"
 
 python start.py "$@"
