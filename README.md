@@ -29,21 +29,34 @@ JARVIS — professional AI life assistant sifatida ikkinchi miya, strategik fikr
 ## Tezkor ishga tushirish
 
 ```bash
-# 1. Bog'liqliklarni o'rnatish
-pip install -r requirements.txt
+# 1. Reponi klonlash
+git clone https://github.com/AzimjonKamiljanov/elite-ai-agent.git
+cd elite-ai-agent
 
-# 2. API kalitlarini sozlash
-cp .env.example .env
+# 2. Avtomatik setup (barcha OS uchun)
+python setup.py
+# yoki
+python3 setup.py
+
+# 3. API kalitlarini sozlash
 # .env faylini tahrirlang va API kalitlarini kiriting
 
-# 3. JARVIS-X ni ishga tushirish
+# 4. JARVIS-X ni ishga tushirish
+
+# Windows:
+jarvis.bat
+
+# Linux/macOS:
+./jarvis
+
+# Yoki to'g'ridan-to'g'ri:
 python start.py
 
-# Yoki Life Assistant rejimida
+# Faqat Life Assistant rejimida:
 python start.py --life-only
 
-# Yoki bash skript orqali (Linux/macOS)
-./jarvis
+# 5. Diagnostika
+python health_check.py
 ```
 
 ## Rejimlar

@@ -6,6 +6,7 @@ from __future__ import annotations
 
 import argparse
 import os
+import signal
 import sys
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
@@ -98,6 +99,35 @@ def _log_interaction(log_file: Path, user_input: str, response: str, mode: str) 
         f.write("-" * 40 + "\n")
 
 
+def _check_venv() -> None:
+    """Virtual environment ichida ishlayotganligini tekshirish."""
+    in_venv = (
+        hasattr(sys, "real_prefix")
+        or (hasattr(sys, "base_prefix") and sys.base_prefix != sys.prefix)
+        or os.environ.get("VIRTUAL_ENV") is not None
+    )
+    if not in_venv:
+        print(
+            "⚠️  Ogohlantirish: Virtual environment (venv) aniqlanmadi.\n"
+            "   Tavsiya: avval 'python setup.py' ni ishga tushiring,\n"
+            "   so'ng agentni './jarvis' yoki 'jarvis.bat' orqali ishga tushiring."
+        )
+
+
+def _setup_signal_handlers() -> None:
+    """Graceful shutdown uchun signal handlerlarni o'rnatish."""
+
+    def _handle_signal(signum: int, frame: object) -> None:  # noqa: ARG001
+        print("\nSignal qabul qilindi. JARVIS to'xtatilmoqda...")
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, _handle_signal)
+    try:
+        signal.signal(signal.SIGTERM, _handle_signal)
+    except (OSError, ValueError):
+        pass
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="JARVIS-X — Avtonom AI Agent",
@@ -126,7 +156,27 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="RAG uchun hujjatlar katalogi",
     )
+    parser.add_argument(
+        "--setup",
+        action="store_true",
+        default=False,
+        help="Sozlash skriptini (setup.py) qayta ishga tushirish",
+    )
     return parser.parse_args()
+
+
+def run_setup() -> None:
+    """setup.py ni ishga tushirish."""
+    import subprocess
+
+    setup_script = Path(__file__).parent / "setup.py"
+    if not setup_script.exists():
+        print("Xato: setup.py topilmadi.")
+        sys.exit(1)
+    result = subprocess.run([sys.executable, str(setup_script)])
+    if result.returncode != 0:
+        print(f"setup.py xato bilan tugadi (kod: {result.returncode}).")
+        sys.exit(result.returncode)
 
 
 def run_life_assistant() -> None:
@@ -146,10 +196,21 @@ def run_jarvis(args: argparse.Namespace) -> None:
         from rich.console import Console
         from rich.markdown import Markdown
     except ImportError:
-        print("Rich kutubxonasi topilmadi. O'rnating: pip install rich")
+        print(
+            "Rich kutubxonasi topilmadi.\n"
+            "  O'rnatish uchun: pip install rich\n"
+            "  Yoki barcha bog'liqliklarni o'rnatish: python setup.py"
+        )
         sys.exit(1)
 
-    from core.ui_renderer import UIRenderer
+    try:
+        from core.ui_renderer import UIRenderer
+    except ImportError as exc:
+        print(
+            f"Modul yuklanmadi: {exc}\n"
+            "  Bog'liqliklarni o'rnatish uchun: python setup.py"
+        )
+        sys.exit(1)
 
     console = Console()
     ui = UIRenderer()
@@ -165,6 +226,7 @@ def run_jarvis(args: argparse.Namespace) -> None:
         )
     except Exception as exc:
         console.print(f"[red]JARVIS ishga tushirishda xato: {exc}[/red]")
+        console.print("[yellow]  Qayta sozlash uchun: python setup.py[/yellow]")
         sys.exit(1)
 
     # Intent parser va smart features
@@ -303,7 +365,13 @@ def run_jarvis(args: argparse.Namespace) -> None:
 
 
 def main() -> None:
+    _check_venv()
+    _setup_signal_handlers()
     args = parse_args()
+
+    if args.setup:
+        run_setup()
+        return
 
     if args.life_only:
         run_life_assistant()
